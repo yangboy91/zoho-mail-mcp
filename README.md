@@ -1,5 +1,9 @@
 # Zoho Mail MCP
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
+[![MCP](https://img.shields.io/badge/MCP-compatible-8A2BE2.svg)](https://modelcontextprotocol.io)
+
 A tiny [MCP](https://modelcontextprotocol.io) server that lets an AI assistant
 read, search, send, and reply to mail on a Zoho mailbox over standard IMAP/SMTP.
 No OAuth — it authenticates with a Zoho **application-specific password**.
