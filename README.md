@@ -1,8 +1,14 @@
 # Zoho Mail MCP
 
-A tiny [MCP](https://modelcontextprotocol.io) server that lets Claude read,
-search, send, and reply to mail on a Zoho mailbox over standard IMAP/SMTP.
+A tiny [MCP](https://modelcontextprotocol.io) server that lets an AI assistant
+read, search, send, and reply to mail on a Zoho mailbox over standard IMAP/SMTP.
 No OAuth — it authenticates with a Zoho **application-specific password**.
+
+MCP is an open standard, so this works with **any MCP-compatible client** —
+Claude Code, Claude Desktop, Cursor, Cline, Continue, and others. Setup is the
+same everywhere: point your client at `.venv/bin/python server.py` and pass the
+two env vars. Client-specific examples are in
+[§5 Register with an MCP client](#5-register-with-an-mcp-client).
 
 ## Tools
 
@@ -19,7 +25,7 @@ No OAuth — it authenticates with a Zoho **application-specific password**.
 2. Enable **Two-Factor Authentication** if it isn't already (required for app
    passwords).
 3. Under **App Passwords**, click **Generate New Password**, name it
-   `claude-mcp`, and copy the password Zoho shows you.
+   `zoho-mcp`, and copy the password Zoho shows you.
 
 > Use this generated password — **not** your normal login password.
 > IMAP/SMTP access must also be enabled in Zoho Mail → Settings → Mail Accounts.
@@ -58,10 +64,15 @@ ZOHO_APP_PASSWORD="xxxx-xxxx-xxxx" \
 
 You should see your 5 most recent inbox subjects and `SMTP ... ok`.
 
-## 5. Register with Claude Code
+## 5. Register with an MCP client
 
-Run this from the cloned repo directory (use absolute paths to `.venv/bin/python`
-and `server.py`):
+Every client needs the same three things: the **command**
+(`.venv/bin/python`), the **server path** (`server.py`), and the two **env
+vars**. Use absolute paths — most clients don't run from the repo directory.
+
+### Claude Code
+
+Run from the cloned repo directory:
 
 ```bash
 claude mcp add zoho-mail \
@@ -70,10 +81,11 @@ claude mcp add zoho-mail \
   -- "$(pwd)/.venv/bin/python" "$(pwd)/server.py"
 ```
 
-Then restart Claude Code. Ask: *"search my Zoho inbox for invoices"*.
+Then restart Claude Code and ask: *"search my Zoho inbox for invoices"*.
 
-For the Claude Desktop app, add the equivalent block to
-`claude_desktop_config.json` under `mcpServers`:
+### Claude Desktop
+
+Add to `claude_desktop_config.json` under `mcpServers`:
 
 ```json
 {
@@ -89,3 +101,35 @@ For the Claude Desktop app, add the equivalent block to
   }
 }
 ```
+
+### Cursor
+
+Add to `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (per-project) — the
+block is identical to Claude Desktop's:
+
+```json
+{
+  "mcpServers": {
+    "zoho-mail": {
+      "command": "/absolute/path/to/zoho-mail-mcp/.venv/bin/python",
+      "args": ["/absolute/path/to/zoho-mail-mcp/server.py"],
+      "env": {
+        "ZOHO_EMAIL": "you@example.com",
+        "ZOHO_APP_PASSWORD": "xxxx-xxxx-xxxx"
+      }
+    }
+  }
+}
+```
+
+### Any other MCP client (Cline, Continue, custom, …)
+
+This is a standard **stdio** MCP server. Whatever the client's config format,
+give it these values:
+
+| Field | Value |
+|-------|-------|
+| Transport | `stdio` |
+| Command | `/absolute/path/to/zoho-mail-mcp/.venv/bin/python` |
+| Args | `["/absolute/path/to/zoho-mail-mcp/server.py"]` |
+| Env | `ZOHO_EMAIL`, `ZOHO_APP_PASSWORD` (+ optional host overrides) |
