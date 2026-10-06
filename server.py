@@ -80,7 +80,14 @@ def _dh(value):
 
 
 def _imap_quote(s):
-    """Escape a string for use inside an IMAP quoted literal."""
+    """Escape a string for use inside an IMAP quoted literal.
+
+    CR, LF and NUL have no escape in a quoted string and imaplib sends
+    arguments verbatim, so text after a newline would be parsed by the server
+    as a new command. Reject them rather than silently altering the value.
+    """
+    if any(c in s for c in "\r\n\x00"):
+        raise ValueError("IMAP arguments may not contain CR, LF or NUL")
     return s.replace("\\", "\\\\").replace('"', '\\"')
 
 
@@ -112,7 +119,11 @@ def _decode_part(part):
 
 
 def _fetch_message(conn, uid):
-    typ, data = conn.uid("fetch", uid, "(RFC822)")
+    # RFC 3501 UIDs are positive integers; anything else could smuggle a
+    # newline into the FETCH command line.
+    if not (uid.isascii() and uid.isdigit()):
+        raise ValueError(f"Invalid message UID: {uid!r}")
+    typ, data = conn.uid("fetch", uid.encode(), "(RFC822)")
     if typ != "OK" or not data or data[0] is None:
         raise RuntimeError(f"Could not fetch message uid={uid}")
     return email.message_from_bytes(data[0][1])
@@ -155,7 +166,7 @@ def search_emails(query: str = "", folder: str = "INBOX", limit: int = 20,
     cfg = _cfg()
     conn = _imap(cfg)
     try:
-        conn.select(f'"{folder}"', readonly=True)
+        conn.select(f'"{_imap_quote(folder)}"', readonly=True)
         criteria = []
         if unseen_only:
             criteria.append("UNSEEN")
@@ -190,8 +201,8 @@ def read_email(uid: str, folder: str = "INBOX") -> dict:
     cfg = _cfg()
     conn = _imap(cfg)
     try:
-        conn.select(f'"{folder}"', readonly=True)
-        msg = _fetch_message(conn, uid.encode())
+        conn.select(f'"{_imap_quote(folder)}"', readonly=True)
+        msg = _fetch_message(conn, uid)
         return {
             "uid": uid,
             "from": _dh(msg.get("From")),
@@ -263,8 +274,8 @@ def reply_email(uid: str, body: str, folder: str = "INBOX",
     cfg = _cfg()
     conn_imap = _imap(cfg)
     try:
-        conn_imap.select(f'"{folder}"', readonly=True)
-        orig = _fetch_message(conn_imap, uid.encode())
+        conn_imap.select(f'"{_imap_quote(folder)}"', readonly=True)
+        orig = _fetch_message(conn_imap, uid)
     finally:
         try:
             conn_imap.logout()
