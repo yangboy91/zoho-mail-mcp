@@ -18,6 +18,7 @@ import email
 import imaplib
 import os
 import smtplib
+import ssl
 from email.header import decode_header, make_header
 from email.message import EmailMessage
 from email.utils import formataddr, formatdate, getaddresses, make_msgid, parseaddr
@@ -47,14 +48,21 @@ def _cfg():
 
 # --- connections ------------------------------------------------------------
 
+# Must be passed explicitly: left to their own defaults, IMAP4_SSL and SMTP_SSL
+# fall back to ssl._create_stdlib_context(), which verifies neither the
+# certificate nor the hostname.
+_SSL_CONTEXT = ssl.create_default_context()
+
+
 def _imap(cfg):
-    conn = imaplib.IMAP4_SSL(cfg["imap_host"])
+    conn = imaplib.IMAP4_SSL(cfg["imap_host"], ssl_context=_SSL_CONTEXT)
     conn.login(cfg["email"], cfg["password"])
     return conn
 
 
 def _smtp(cfg):
-    conn = smtplib.SMTP_SSL(cfg["smtp_host"], cfg["smtp_port"])
+    conn = smtplib.SMTP_SSL(cfg["smtp_host"], cfg["smtp_port"],
+                            context=_SSL_CONTEXT)
     conn.login(cfg["email"], cfg["password"])
     return conn
 
